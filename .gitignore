@@ -1,0 +1,64 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editors
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log
+logs/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+
+# Django
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+static/
+local_settings.py
+
+# Tests / coverage
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+.pytest_cache/
+.tox/
+.nox/
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# Dependency managers
+Pipfile.lock
+poetry.lock
+
+# Scraper outputs
+scraped_data/
+parsing/scraped_data/
+
+# Temp files
+*.sh~
+*.swp
+*.swo
+
