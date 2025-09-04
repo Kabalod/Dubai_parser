@@ -1,0 +1,10 @@
+{% load humanize %}
+
+{% with avg_rent=record.get_avg_rent_in_building_by_bedrooms %}
+    {% if avg_rent %}
+        <span class="text-info fw-bold">{{ avg_rent|floatformat:0|intcomma }}</span>
+        <small class="text-muted d-block">AED/мес</small>
+    {% else %}
+        <span class="text-muted">-</span>
+    {% endif %}
+{% endwith %} 

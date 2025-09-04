@@ -1,0 +1,6 @@
+{% if record.metrics.building_rent_count > 0 %}
+    <span class="badge bg-info">{{ record.metrics.building_rent_count }}</span>
+    <small class="text-muted d-block">аренда</small>
+{% else %}
+    <span class="text-muted">0</span>
+{% endif %} 

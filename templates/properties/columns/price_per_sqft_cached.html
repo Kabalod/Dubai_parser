@@ -1,0 +1,8 @@
+{% load humanize %}
+
+{% if record.metrics.price_per_sqft %}
+    <span class="text-success fw-bold">{{ record.metrics.price_per_sqft|floatformat:0 }}</span>
+    <small class="text-muted d-block">AED/кв.фт</small>
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

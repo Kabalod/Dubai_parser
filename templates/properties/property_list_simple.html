@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Список недвижимости ({{ total_properties }} объектов)</h1>
+
+<!-- Фильтры -->
+<form method="get" class="mb-3">
+    <div class="row">
+        <div class="col-md-3">
+            <input type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Поиск...">
+        </div>
+        <div class="col-md-2">
+            <select class="form-select" name="price_duration">
+                <option value="">Все типы</option>
+                <option value="sell" {% if current_filters.price_duration == 'sell' %}selected{% endif %}>Продажа</option>
+                <option value="rent" {% if current_filters.price_duration == 'rent' %}selected{% endif %}>Аренда</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select" name="area">
+                <option value="">Все районы</option>
+                {% for area in available_areas %}
+                    <option value="{{ area }}" {% if current_filters.area == area %}selected{% endif %}>
+                        {{ area }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary">Применить</button>
+        </div>
+    </div>
+</form>
+
+<!-- Таблица -->
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ссылка</th>
+            <th>Здание</th>
+            <th>Район</th>
+            <th>Площадь</th>
+            <th>Комнаты</th>
+            <th>Цена</th>
+            <th>Средняя в здании</th>
+            <th>Продажа в здании</th>
+            <th>Экспозиция</th>
+            <th>Средняя экспозиция района</th>
+            <th>ROI объявления</th>
+            <th>Средний ROI здания</th>
+            <th>Аренда в здании</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for property in page_obj %}
+        <tr>
+            <td><a href="{{ property.url }}" target="_blank">{{ property.title|truncatechars:20 }}</a></td>
+            <td>{% if property.building %}{{ property.building.name|truncatechars:15 }}{% else %}-{% endif %}</td>
+            <td>
+                {% if property.building and property.building.area %}
+                    <span class="badge bg-info">{{ property.building.area }}</span>
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>{% if property.area_sqm %}{{ property.area_sqm|floatformat:0 }} м²{% else %}-{% endif %}</td>
+            <td>{% if property.bedrooms %}{{ property.bedrooms }}{% else %}-{% endif %}</td>
+            <td>{% if property.price %}{{ property.price|floatformat:0 }} {{ property.price_currency }}{% else %}-{% endif %}</td>
+            <td>
+                {% if property.building %}
+                    {% if property.price_duration == 'sell' %}
+                        {{ property.building.avg_sale_price|floatformat:0 }}
+                    {% else %}
+                        {{ property.building.avg_rent_price|floatformat:0 }}
+                    {% endif %}
+                {% else %}-{% endif %}
+            </td>
+            <td>{% if property.building %}{{ property.building.sale_count }}{% else %}-{% endif %}</td>
+            <td>{% if property.days_on_market %}{{ property.days_on_market }} дней{% else %}-{% endif %}</td>
+            <td>{{ property.get_area_avg_days_on_market|floatformat:0 }} дней</td>
+            <td>{% if property.roi %}{{ property.roi|floatformat:2 }}%{% else %}-{% endif %}</td>
+            <td>{% if property.building %}{{ property.building.avg_roi|floatformat:2 }}%{% else %}-{% endif %}</td>
+            <td>{% if property.building %}{{ property.building.rent_count }}{% else %}-{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Пагинация -->
+{% if page_obj.has_other_pages %}
+<nav>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Предыдущая</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Следующая</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %} 

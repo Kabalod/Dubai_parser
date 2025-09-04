@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>Аналитика недвижимости</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Всего объектов</h5>
+                    <h2 class="text-primary">{{ total_properties }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Всего зданий</h5>
+                    <h2 class="text-info">{{ total_buildings }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Средняя цена продажи</h5>
+                    <h2 class="text-success">{{ avg_price_sale|floatformat:0 }} AED</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Средняя цена аренды</h5>
+                    <h2 class="text-warning">{{ avg_price_rent|floatformat:0 }} AED</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>Статистика по районам</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Район</th>
+                            <th>Зданий</th>
+                            <th>Объектов</th>
+                            <th>Средняя цена продажи</th>
+                            <th>Средняя цена аренды</th>
+                            <th>Продажа</th>
+                            <th>Аренда</th>
+                            <th>Средний ROI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in area_stats %}
+                        <tr>
+                            <td><strong>{{ stat.area }}</strong></td>
+                            <td>{{ stat.total_buildings }}</td>
+                            <td>{{ stat.total_properties }}</td>
+                            <td>{{ stat.avg_sale_price|floatformat:0|default:"-" }} AED</td>
+                            <td>{{ stat.avg_rent_price|floatformat:0|default:"-" }} AED</td>
+                            <td>{{ stat.sale_count }}</td>
+                            <td>{{ stat.rent_count }}</td>
+                            <td>{{ stat.avg_roi|floatformat:2|default:"-" }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

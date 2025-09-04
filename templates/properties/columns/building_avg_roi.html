@@ -1,0 +1,13 @@
+{% with building_roi=record.get_building_avg_roi %}
+    {% if building_roi %}
+        {% if building_roi >= 8 %}
+            <span class="text-success fw-bold">{{ building_roi|floatformat:2 }}%</span>
+        {% elif building_roi >= 5 %}
+            <span class="text-warning fw-bold">{{ building_roi|floatformat:2 }}%</span>
+        {% else %}
+            <span class="text-danger fw-bold">{{ building_roi|floatformat:2 }}%</span>
+        {% endif %}
+    {% else %}
+        <span class="text-muted">-</span>
+    {% endif %}
+{% endwith %} 

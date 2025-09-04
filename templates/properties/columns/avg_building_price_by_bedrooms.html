@@ -1,0 +1,5 @@
+{% if record.get_avg_building_price_by_bedrooms %}
+    {{ record.get_avg_building_price_by_bedrooms|floatformat:0 }} AED
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

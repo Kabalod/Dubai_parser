@@ -1,0 +1,11 @@
+{% if record.metrics.roi %}
+    {% if record.metrics.roi >= 8 %}
+        <span class="badge bg-success">{{ record.metrics.roi|floatformat:2 }}%</span>
+    {% elif record.metrics.roi >= 5 %}
+        <span class="badge bg-warning text-dark">{{ record.metrics.roi|floatformat:2 }}%</span>
+    {% else %}
+        <span class="badge bg-danger">{{ record.metrics.roi|floatformat:2 }}%</span>
+    {% endif %}
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

@@ -1,0 +1,11 @@
+{% if record.metrics.area_avg_days_on_market %}
+    {% if record.metrics.area_avg_days_on_market <= 30 %}
+        <span class="badge bg-success">{{ record.metrics.area_avg_days_on_market|floatformat:1 }} дней</span>
+    {% elif record.metrics.area_avg_days_on_market <= 90 %}
+        <span class="badge bg-warning">{{ record.metrics.area_avg_days_on_market|floatformat:1 }} дней</span>
+    {% else %}
+        <span class="badge bg-danger">{{ record.metrics.area_avg_days_on_market|floatformat:1 }} дней</span>
+    {% endif %}
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

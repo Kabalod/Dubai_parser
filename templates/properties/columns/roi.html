@@ -1,0 +1,21 @@
+{% with property_roi=record.calculate_property_roi %}
+    {% if property_roi %}
+        {% if property_roi >= 8 %}
+            <span class="badge bg-success">{{ property_roi|floatformat:2 }}%</span>
+        {% elif property_roi >= 5 %}
+            <span class="badge bg-warning text-dark">{{ property_roi|floatformat:2 }}%</span>
+        {% else %}
+            <span class="badge bg-danger">{{ property_roi|floatformat:2 }}%</span>
+        {% endif %}
+    {% elif record.roi %}
+        {% if record.roi >= 8 %}
+            <span class="badge bg-success">{{ record.roi|floatformat:2 }}%</span>
+        {% elif record.roi >= 5 %}
+            <span class="badge bg-warning text-dark">{{ record.roi|floatformat:2 }}%</span>
+        {% else %}
+            <span class="badge bg-danger">{{ record.roi|floatformat:2 }}%</span>
+        {% endif %}
+    {% else %}
+        <span class="text-muted">-</span>
+    {% endif %}
+{% endwith %} 

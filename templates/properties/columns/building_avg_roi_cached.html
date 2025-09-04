@@ -1,0 +1,11 @@
+{% if record.metrics.building_avg_roi %}
+    {% if record.metrics.building_avg_roi >= 8 %}
+        <span class="text-success fw-bold">{{ record.metrics.building_avg_roi|floatformat:2 }}%</span>
+    {% elif record.metrics.building_avg_roi >= 5 %}
+        <span class="text-warning fw-bold">{{ record.metrics.building_avg_roi|floatformat:2 }}%</span>
+    {% else %}
+        <span class="text-danger fw-bold">{{ record.metrics.building_avg_roi|floatformat:2 }}%</span>
+    {% endif %}
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

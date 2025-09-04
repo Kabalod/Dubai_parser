@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load django_tables2 %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                Анализ недвижимости 
+                <span class="badge bg-primary">{{ total_properties }} объектов</span>
+            </h1>
+
+            <!-- Фильтры -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Фильтры и поиск
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <!-- Поиск -->
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Поиск</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query }}" placeholder="Название, адрес, агент...">
+                        </div>
+                        
+                        <!-- Тип объявления -->
+                        <div class="col-md-2">
+                            <label for="price_duration" class="form-label">Тип</label>
+                            <select class="form-select" id="price_duration" name="price_duration">
+                                <option value="">Все типы</option>
+                                <option value="sell" {% if current_filters.price_duration == 'sell' %}selected{% endif %}>Продажа</option>
+                                <option value="rent" {% if current_filters.price_duration == 'rent' %}selected{% endif %}>Аренда</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Район -->
+                        <div class="col-md-2">
+                            <label for="area" class="form-label">Район</label>
+                            <select class="form-select" id="area" name="area">
+                                <option value="">Все районы</option>
+                                {% for area_name in available_areas %}
+                                    <option value="{{ area_name }}" {% if current_filters.area == area_name %}selected{% endif %}>
+                                        {{ area_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Количество спален -->
+                        <div class="col-md-2">
+                            <label for="bedrooms" class="form-label">Спальни</label>
+                            <select class="form-select" id="bedrooms" name="bedrooms">
+                                <option value="">Любое</option>
+                                {% for bedroom_count in bedroom_choices %}
+                                    <option value="{{ bedroom_count }}" {% if current_filters.bedrooms == bedroom_count|stringformat:"s" %}selected{% endif %}>
+                                        {{ bedroom_count }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Цена от -->
+                        <div class="col-md-2">
+                            <label for="min_price" class="form-label">Цена от</label>
+                            <input type="number" class="form-control" id="min_price" name="min_price" 
+                                   value="{{ current_filters.min_price }}" placeholder="0">
+                        </div>
+                        
+                        <!-- Цена до -->
+                        <div class="col-md-2">
+                            <label for="max_price" class="form-label">Цена до</label>
+                            <input type="number" class="form-control" id="max_price" name="max_price" 
+                                   value="{{ current_filters.max_price }}" placeholder="∞">
+                        </div>
+                        
+                        <!-- ROI от -->
+                        <div class="col-md-2">
+                            <label for="min_roi" class="form-label">ROI от (%)</label>
+                            <input type="number" step="0.1" class="form-control" id="min_roi" name="min_roi" 
+                                   value="{{ current_filters.min_roi }}" placeholder="0">
+                        </div>
+                        
+                        <!-- ROI до -->
+                        <div class="col-md-2">
+                            <label for="max_roi" class="form-label">ROI до (%)</label>
+                            <input type="number" step="0.1" class="form-control" id="max_roi" name="max_roi" 
+                                   value="{{ current_filters.max_roi }}" placeholder="∞">
+                        </div>
+                        
+                        <!-- Здание -->
+                        <div class="col-md-3">
+                            <label for="building" class="form-label">Здание</label>
+                            <select class="form-select" id="building" name="building">
+                                <option value="">Все здания</option>
+                                {% for building_name in buildings %}
+                                    <option value="{{ building_name }}" {% if current_filters.building == building_name %}selected{% endif %}>
+                                        {{ building_name|truncatechars:30 }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Кнопки -->
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search"></i> Применить
+                            </button>
+                            <a href="?" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Сбросить
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Таблица -->
+            <div class="card">
+                <div class="card-body p-0">
+                    {% render_table table %}
+                </div>
+            </div>
+            
+            <!-- Информация о результатах -->
+            <div class="mt-3">
+                <small class="text-muted">
+                    Показано {{ table.page.start_index }}-{{ table.page.end_index }} 
+                    из {{ total_properties }} объектов
+                </small>
+            </div>
+            
+            <!-- Описание расчетов -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Описание расчетов колонок
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Ссылка:</strong> <em>Прямая ссылка на объявление с сайта-источника</em></p>
+                            <p><strong>Билдинг:</strong> <em>Название здания, извлеченное из адреса объявления</em></p>
+                            <p><strong>Area:</strong> <em>Район Дубая, определенный по адресу из списка 84 разрешенных районов</em></p>
+                            <p><strong>Комнаты:</strong> <em>Количество спален в объекте недвижимости</em></p>
+                            <p><strong>Цена:</strong> <em>Цена объекта в указанной валюте (продажа или аренда)</em></p>
+                            <p><strong>Средняя в билдинге:</strong> <em>Средняя цена всех объектов того же типа (продажа/аренда) в данном здании</em></p>
+                            <p><strong>Средняя в билдинге для данного кол-ва bedrooms:</strong> <em>Средняя цена объектов того же типа с таким же количеством спален в данном здании</em></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Объявлений на продажу в билдинге:</strong> <em>Количество активных объявлений на продажу в данном здании</em></p>
+                            <p><strong>Экспозиция:</strong> <em>Количество дней с момента публикации объявления до текущей даты</em></p>
+                            <p><strong>Средняя экспозиция района:</strong> <em>Средняя экспозиция всех объектов в данном районе</em></p>
+                            <p><strong>ROI объявления:</strong> <em>Рентабельность инвестиций = (Средняя годовая аренда в здании / Цена продажи) × 100%</em></p>
+                            <p><strong>Средний ROI билдинга:</strong> <em>Средний ROI всех объектов на продажу в данном здании</em></p>
+                            <p><strong>Объявлений на аренду в билдинге:</strong> <em>Количество активных объявлений на аренду в данном здании</em></p>
+                            <p><strong>Цена за кв.фт:</strong> <em>Цена объекта, разделенная на площадь в квадратных футах</em></p>
+                            <p><strong>Средняя экспозиция билдинга:</strong> <em>Среднее время экспозиции всех объектов того же типа в данном здании</em></p>
+                            <p><strong>Средняя аренда в билдинге для данного кол-ва bedrooms:</strong> <em>Средняя арендная плата для объектов с таким же количеством спален в данном здании</em></p>
+                            <p><strong>Объявлений на продажу/аренду в билдинге с таким же кол-вом спален:</strong> <em>Количество объявлений соответствующего типа с таким же количеством спален в данном здании</em></p>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <small>
+                            <i class="fas fa-lightbulb"></i> 
+                            <strong>Примечание:</strong> ROI рассчитывается только для объектов на продажу при наличии данных об аренде в том же здании. 
+                            Цветовая индикация: <span class="badge bg-success">Зеленый ≥8%</span>, 
+                            <span class="badge bg-warning text-dark">Желтый 5-8%</span>, 
+                            <span class="badge bg-danger">Красный <5%</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Дополнительные стили для таблицы */
+.table th {
+    background-color: #343a40;
+    color: white;
+    border-color: #454d55;
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,123,255,.075);
+}
+
+/* Стили для бейджей */
+.badge {
+    font-size: 0.8rem;
+}
+
+/* Адаптивность таблицы */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem 0.25rem;
+    }
+}
+
+/* Стили для пагинации */
+.pagination {
+    margin-bottom: 0;
+}
+
+.page-link {
+    color: #007bff;
+}
+
+.page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+</style>
+{% endblock %} 

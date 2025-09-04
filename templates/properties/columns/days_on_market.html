@@ -1,0 +1,11 @@
+{% if record.days_on_market %}
+    {% if record.days_on_market > 90 %}
+        <span class="badge bg-danger">{{ record.days_on_market }} дней</span>
+    {% elif record.days_on_market > 30 %}
+        <span class="badge bg-warning text-dark">{{ record.days_on_market }} дней</span>
+    {% else %}
+        <span class="badge bg-success">{{ record.days_on_market }} дней</span>
+    {% endif %}
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

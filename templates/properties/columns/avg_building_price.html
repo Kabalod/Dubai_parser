@@ -1,0 +1,9 @@
+{% if record.building %}
+    {% if record.price_duration == 'sell' %}
+        {{ record.building.avg_sale_price|floatformat:0 }} AED
+    {% else %}
+        {{ record.building.avg_rent_price|floatformat:0 }} AED
+    {% endif %}
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

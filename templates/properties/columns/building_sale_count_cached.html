@@ -1,0 +1,6 @@
+{% if record.metrics.building_sale_count > 0 %}
+    <span class="badge bg-primary">{{ record.metrics.building_sale_count }}</span>
+    <small class="text-muted d-block">продажа</small>
+{% else %}
+    <span class="text-muted">0</span>
+{% endif %} 

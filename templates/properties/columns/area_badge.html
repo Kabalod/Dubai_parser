@@ -1,0 +1,5 @@
+{% if record.building and record.building.area %}
+    <span class="badge bg-info text-dark">{{ record.building.area|truncatechars:15 }}</span>
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

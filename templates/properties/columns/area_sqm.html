@@ -1,0 +1,5 @@
+{% if record.area_sqm %}
+    {{ record.area_sqm|floatformat:0 }} м²
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

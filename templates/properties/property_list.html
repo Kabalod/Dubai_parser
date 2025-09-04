@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+
+{% block title %}Список недвижимости - Анализатор недвижимости{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-list me-2"></i>
+            Список недвижимости
+            <small class="text-muted">({{ total_properties }} объектов)</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="filter-card">
+    <form method="get" class="row g-3">
+        <!-- Поиск -->
+        <div class="col-md-3">
+            <label for="search" class="form-label">Поиск</label>
+            <input type="text" class="form-control" id="search" name="search" 
+                   value="{{ search_query }}" placeholder="Название, адрес, агент...">
+        </div>
+
+        <!-- Цена от/до -->
+        <div class="col-md-2">
+            <label for="min_price" class="form-label">Цена от</label>
+            <input type="number" class="form-control" id="min_price" name="min_price" 
+                   value="{{ current_filters.min_price }}" placeholder="0">
+        </div>
+        <div class="col-md-2">
+            <label for="max_price" class="form-label">Цена до</label>
+            <input type="number" class="form-control" id="max_price" name="max_price" 
+                   value="{{ current_filters.max_price }}" placeholder="∞">
+        </div>
+
+        <!-- Спальни -->
+        <div class="col-md-2">
+            <label for="bedrooms" class="form-label">Спальни</label>
+            <select class="form-select" id="bedrooms" name="bedrooms">
+                <option value="">Любые</option>
+                {% for br in bedroom_choices %}
+                    <option value="{{ br }}" {% if current_filters.bedrooms == br|stringformat:"s" %}selected{% endif %}>
+                        {{ br }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Тип -->
+        <div class="col-md-3">
+            <label for="price_duration" class="form-label">Тип</label>
+            <select class="form-select" id="price_duration" name="price_duration">
+                <option value="">Все</option>
+                <option value="sell" {% if current_filters.price_duration == 'sell' %}selected{% endif %}>Продажа</option>
+                <option value="rent" {% if current_filters.price_duration == 'rent' %}selected{% endif %}>Аренда</option>
+            </select>
+        </div>
+
+        <!-- Район -->
+        <div class="col-md-3">
+            <label for="area" class="form-label">Район</label>
+            <select class="form-select select2" id="area" name="area">
+                <option value="">Все районы</option>
+                {% for area in areas %}
+                    <option value="{{ area }}" {% if current_filters.area == area %}selected{% endif %}>
+                        {{ area }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Здание -->
+        <div class="col-md-3">
+            <label for="building" class="form-label">Здание</label>
+            <select class="form-select select2" id="building" name="building">
+                <option value="">Все здания</option>
+                {% for building in buildings %}
+                    <option value="{{ building }}" {% if current_filters.building == building %}selected{% endif %}>
+                        {{ building }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- ROI от/до -->
+        <div class="col-md-2">
+            <label for="min_roi" class="form-label">ROI от (%)</label>
+            <input type="number" step="0.1" class="form-control" id="min_roi" name="min_roi" 
+                   value="{{ current_filters.min_roi }}" placeholder="0">
+        </div>
+        <div class="col-md-2">
+            <label for="max_roi" class="form-label">ROI до (%)</label>
+            <input type="number" step="0.1" class="form-control" id="max_roi" name="max_roi" 
+                   value="{{ current_filters.max_roi }}" placeholder="∞">
+        </div>
+
+        <!-- Сортировка -->
+        <div class="col-md-2">
+            <label for="sort" class="form-label">Сортировка</label>
+            <select class="form-select" id="sort" name="sort">
+                <option value="created_at" {% if current_filters.sort == 'created_at' %}selected{% endif %}>Дата добавления</option>
+                <option value="price" {% if current_filters.sort == 'price' %}selected{% endif %}>Цена</option>
+                <option value="bedrooms" {% if current_filters.sort == 'bedrooms' %}selected{% endif %}>Спальни</option>
+                <option value="area" {% if current_filters.sort == 'area' %}selected{% endif %}>Площадь</option>
+                <option value="roi" {% if current_filters.sort == 'roi' %}selected{% endif %}>ROI</option>
+                <option value="days_on_market" {% if current_filters.sort == 'days_on_market' %}selected{% endif %}>Дни на рынке</option>
+                <option value="building" {% if current_filters.sort == 'building' %}selected{% endif %}>Здание</option>
+                <option value="area_name" {% if current_filters.sort == 'area_name' %}selected{% endif %}>Район</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="order" class="form-label">Порядок</label>
+            <select class="form-select" id="order" name="order">
+                <option value="desc" {% if current_filters.order == 'desc' %}selected{% endif %}>Убывание</option>
+                <option value="asc" {% if current_filters.order == 'asc' %}selected{% endif %}>Возрастание</option>
+            </select>
+        </div>
+
+        <!-- Кнопки -->
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search me-1"></i>
+                Применить фильтры
+            </button>
+            <a href="{% url 'properties:property_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-1"></i>
+                Сбросить
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Таблица недвижимости -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Ссылка</th>
+                <th>Здание</th>
+                <th>Площадь</th>
+                <th>Комнаты</th>
+                <th>Цена</th>
+                <th>Средняя в здании</th>
+                <th>Продажа в здании</th>
+                <th>Экспозиция</th>
+                <th>Средняя экспозиция района</th>
+                <th>ROI объявления</th>
+                <th>Средний ROI здания</th>
+                <th>Аренда в здании</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for property in page_obj %}
+            <tr>
+                <!-- Ссылка -->
+                <td>
+                    <a href="{{ property.url }}" target="_blank" class="property-url" title="{{ property.url }}">
+                        {{ property.title|truncatechars:30 }}
+                        <i class="fas fa-external-link-alt ms-1"></i>
+                    </a>
+                </td>
+
+                <!-- Здание -->
+                <td>
+                    {% if property.building %}
+                        <a href="{% url 'properties:building_detail' property.building.id %}" 
+                           class="building-name" title="{{ property.building.name }}">
+                            {{ property.building.name|truncatechars:20 }}
+                        </a>
+                        <br>
+                        <small class="text-muted">{{ property.building.area|default:"Район не указан" }}</small>
+                    {% else %}
+                        <span class="text-muted">Не определено</span>
+                    {% endif %}
+                </td>
+
+                <!-- Площадь -->
+                <td>
+                    {% if property.area_sqm %}
+                        {{ property.area_sqm|floatformat:0 }} м²
+                    {% elif property.area_sqft %}
+                        {{ property.area_sqft|floatformat:0 }} фт²
+                    {% else %}
+                        <span class="text-muted">Не указано</span>
+                    {% endif %}
+                </td>
+
+                <!-- Комнаты -->
+                <td>
+                    {% if property.bedrooms %}
+                        <span class="badge bg-info">{{ property.bedrooms }} спален</span>
+                        {% if property.bathrooms %}
+                            <br><small class="text-muted">{{ property.bathrooms }} ванн</small>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">Не указано</span>
+                    {% endif %}
+                </td>
+
+                <!-- Цена -->
+                <td>
+                    {% if property.price %}
+                        <strong>{{ property.price|floatformat:0 }} {{ property.price_currency }}</strong>
+                        <br>
+                        <small class="badge {% if property.price_duration == 'sell' %}bg-success{% else %}bg-warning{% endif %}">
+                            {% if property.price_duration == 'sell' %}Продажа{% else %}Аренда{% endif %}
+                        </small>
+                    {% else %}
+                        <span class="text-muted">Цена не указана</span>
+                    {% endif %}
+                </td>
+
+                <!-- Средняя цена в здании -->
+                <td>
+                    {% if property.building %}
+                        {% if property.price_duration == 'sell' %}
+                            {% with avg_price=property.building.avg_sale_price %}
+                                {% if avg_price > 0 %}
+                                    {{ avg_price|floatformat:0 }} AED
+                                {% else %}
+                                    <span class="text-muted">Нет данных</span>
+                                {% endif %}
+                            {% endwith %}
+                        {% else %}
+                            {% with avg_price=property.building.avg_rent_price %}
+                                {% if avg_price > 0 %}
+                                    {{ avg_price|floatformat:0 }} AED
+                                {% else %}
+                                    <span class="text-muted">Нет данных</span>
+                                {% endif %}
+                            {% endwith %}
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+
+                <!-- Объявлений на продажу в здании -->
+                <td>
+                    {% if property.building %}
+                        <span class="badge bg-primary">{{ property.building.sale_count }}</span>
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+
+                <!-- Экспозиция (дни на рынке) -->
+                <td>
+                    {% if property.days_on_market %}
+                        <span class="{% if property.days_on_market > 90 %}text-danger{% elif property.days_on_market > 30 %}text-warning{% else %}text-success{% endif %}">
+                            {{ property.days_on_market }} дней
+                        </span>
+                    {% else %}
+                        <span class="text-muted">Нет данных</span>
+                    {% endif %}
+                </td>
+
+                <!-- Средняя экспозиция района -->
+                <td>
+                    {% with avg_days=property.get_area_avg_days_on_market %}
+                        {% if avg_days > 0 %}
+                            {{ avg_days|floatformat:0 }} дней
+                        {% else %}
+                            <span class="text-muted">Нет данных</span>
+                        {% endif %}
+                    {% endwith %}
+                </td>
+
+                <!-- ROI объявления -->
+                <td>
+                    {% if property.roi %}
+                        <span class="{% if property.roi > 0 %}roi-positive{% else %}roi-negative{% endif %}">
+                            {{ property.roi|floatformat:2 }}%
+                        </span>
+                    {% else %}
+                        <span class="text-muted">Нет данных</span>
+                    {% endif %}
+                </td>
+
+                <!-- Средний ROI здания -->
+                <td>
+                    {% if property.building %}
+                        {% with avg_roi=property.building.avg_roi %}
+                            {% if avg_roi > 0 %}
+                                <span class="{% if avg_roi > 0 %}roi-positive{% else %}roi-negative{% endif %}">
+                                    {{ avg_roi|floatformat:2 }}%
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Нет данных</span>
+                            {% endif %}
+                        {% endwith %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+
+                <!-- Объявлений на аренду в здании -->
+                <td>
+                    {% if property.building %}
+                        <span class="badge bg-secondary">{{ property.building.rent_count }}</span>
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="12" class="text-center py-4">
+                    <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">Объекты не найдены. Попробуйте изменить параметры поиска.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Пагинация -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Навигация по страницам">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">
+                Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Улучшенная инициализация Select2 для больших списков
+    $('.select2').each(function() {
+        $(this).select2({
+            theme: 'bootstrap-5',
+            placeholder: $(this).attr('placeholder') || 'Выберите...',
+            allowClear: true,
+            width: '100%'
+        });
+    });
+    
+    // Автоматическая отправка формы при изменении быстрых фильтров
+    $('#price_duration, #bedrooms').change(function() {
+        $(this).closest('form').submit();
+    });
+});
+</script>
+{% endblock %} 

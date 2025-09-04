@@ -1,0 +1,8 @@
+{% if record.price %}
+    <strong>{{ record.price|floatformat:0 }}</strong> {{ record.price_currency }}
+    {% if record.price_duration == 'rent' %}
+        <small class="text-muted">/год</small>
+    {% endif %}
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %} 

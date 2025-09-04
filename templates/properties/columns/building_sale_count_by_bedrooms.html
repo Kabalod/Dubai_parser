@@ -1,0 +1,8 @@
+{% with sale_count=record.get_building_sale_count_by_bedrooms %}
+    {% if sale_count > 0 %}
+        <span class="badge bg-primary">{{ sale_count }}</span>
+        <small class="text-muted d-block">продажа</small>
+    {% else %}
+        <span class="text-muted">0</span>
+    {% endif %}
+{% endwith %} 
