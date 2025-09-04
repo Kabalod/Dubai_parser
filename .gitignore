@@ -33,6 +33,7 @@ db.sqlite3
 media/
 staticfiles/
 static/
+!static/.gitkeep
 local_settings.py
 
 # Tests / coverage
@@ -52,6 +53,9 @@ htmlcov/
 # Dependency managers
 Pipfile.lock
 poetry.lock
+
+# Env files
+.env
 
 # Scraper outputs
 scraped_data/

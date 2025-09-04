@@ -121,9 +121,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
+_STATIC_DIR = BASE_DIR / "static"
+STATICFILES_DIRS = [_STATIC_DIR] if _STATIC_DIR.exists() else []
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # CSRF trusted origins (for Railway domain, etc.)
