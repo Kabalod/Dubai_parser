@@ -8,6 +8,7 @@ urlpatterns = [
     path('simple/', views.property_list, name='property_list_simple'),  # Старая версия
     path('analytics/', views.property_analytics, name='analytics'),
     path('building/<int:building_id>/', views.building_detail, name='building_detail'),
+    path('start-scrape/', views.start_scrape, name='start_scrape'),
     
     # API endpoints
     path('api/buildings/', views.api_buildings, name='api_buildings'),

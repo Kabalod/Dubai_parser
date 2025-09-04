@@ -4,6 +4,16 @@
 <div class="container-fluid">
     <h1>Аналитика недвижимости</h1>
     
+    {% if user.is_staff %}
+    <form action="{% url 'properties:start_scrape' %}" method="post" class="mb-3">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-play me-1"></i> Запустить парсинг (2 страницы)
+        </button>
+        <small class="text-muted ms-2">Запуск в фоне, обновите страницу через пару минут.</small>
+    </form>
+    {% endif %}
+
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-center">

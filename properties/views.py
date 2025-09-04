@@ -6,6 +6,14 @@ from django_tables2 import RequestConfig
 from .models import Property, Building, AREAS_WITH_PROPERTY
 from .tables import PropertyTable
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import redirect
+from django.urls import reverse
+import threading
+import subprocess
+import sys
+import os
 
 
 def property_list_tables2(request):
@@ -352,3 +360,30 @@ def api_areas(request):
     ]
     
     return JsonResponse({'results': results}) 
+
+
+# --- Кнопка запуска парсинга и импорта ---
+def _run_scrape_and_import():
+    project_root = settings.BASE_DIR
+
+    def run_cmd(args, cwd=None):
+        try:
+            subprocess.run(args, cwd=cwd or project_root, check=False)
+        except Exception:
+            pass
+
+    python_exec = sys.executable
+    run_cmd([python_exec, os.path.join(project_root, 'parsing', 'a_buy.py'), '--threads', '5', '--end-page', '2'])
+    run_cmd([python_exec, os.path.join(project_root, 'parsing', 'a.py'), '--threads', '5', '--end-page', '2'])
+    run_cmd([python_exec, os.path.join(project_root, 'manage.py'), 'import_properties', os.path.join(project_root, 'scraped_data'), '--update'])
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def start_scrape(request):
+    if request.method == 'POST':
+        thread = threading.Thread(target=_run_scrape_and_import, daemon=True)
+        thread.start()
+        messages.success(request, 'Парсинг запущен в фоне. Обновите страницу через несколько минут.')
+        return redirect(reverse('properties:analytics'))
+    return redirect(reverse('properties:analytics'))
