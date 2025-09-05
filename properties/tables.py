@@ -34,6 +34,15 @@ class PropertyTable(tables.Table):
         attrs={'th': {'style': 'width: 10%;'}}
     )
 
+    # 3a. Тип объявления (продажа/аренда)
+    price_duration = tables.TemplateColumn(
+        template_name='properties/columns/price_duration_badge.html',
+        verbose_name='Тип',
+        orderable=True,
+        order_by='price_duration',
+        attrs={'th': {'style': 'width: 6%;'}}
+    )
+
     # 4. Комнаты (сортировка по bedrooms)
     bedrooms = tables.Column(
         verbose_name='Комнаты',

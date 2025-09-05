@@ -276,7 +276,9 @@ def property_analytics(request):
                 When(properties__price_duration='rent', then=1)
             )
         ),
-        avg_roi=Avg('properties__roi')
+        # Используем предрассчитанные метрики ROI вместо поля Property.roi,
+        # чтобы не зависеть от тяжелого пересчета ROI по сети
+        avg_roi=Avg('properties__metrics__roi')
     ).exclude(area__isnull=True).order_by('area')
     
     # Общая статистика

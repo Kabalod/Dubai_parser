@@ -1,0 +1,9 @@
+{% if record.price_duration == 'rent' %}
+    <span class="badge bg-info">Аренда</span>
+{% elif record.price_duration == 'sell' %}
+    <span class="badge bg-secondary">Продажа</span>
+{% else %}
+    <span class="text-muted">-</span>
+{% endif %}
+
+

@@ -2,7 +2,8 @@
 Команда для расчета и сохранения всех метрик недвижимости
 """
 from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.db import transaction, connection
+from django.db.utils import OperationalError
 from django.db.models import Avg, Count, Q, F, Case, When, DecimalField
 from django.db.models.functions import Coalesce
 from properties.models import Property, PropertyMetrics
@@ -24,16 +25,48 @@ class Command(BaseCommand):
             help='Limit number of properties to process',
         )
         parser.add_argument(
+            '--offset',
+            type=int,
+            default=0,
+            help='Start processing from this offset (for resumable runs)',
+        )
+        parser.add_argument(
             '--batch-size',
             type=int,
             default=1000,
             help='Batch size for bulk operations (default: 1000)',
         )
+        parser.add_argument(
+            '--update-chunk-size',
+            type=int,
+            default=200,
+            help='Chunk size for bulk_update calls (default: 200)',
+        )
+        parser.add_argument(
+            '--skip-roi',
+            action='store_true',
+            help='Skip ROI calculation to reduce DB load',
+        )
+        parser.add_argument(
+            '--skip-building',
+            action='store_true',
+            help='Skip building-level metrics to reduce DB load',
+        )
+        parser.add_argument(
+            '--skip-area',
+            action='store_true',
+            help='Skip area-level metrics to reduce DB load',
+        )
 
     def handle(self, *args, **options):
         force = options['force']
         limit = options['limit']
+        offset = options['offset'] or 0
         batch_size = options['batch_size']
+        self.skip_roi = options['skip_roi']
+        self.skip_building = options['skip_building']
+        self.skip_area = options['skip_area']
+        self.update_chunk_size = options['update_chunk_size']
 
         self.stdout.write('Starting optimized metrics calculation...')
 
@@ -45,8 +78,12 @@ class Command(BaseCommand):
             existing_metrics = PropertyMetrics.objects.values_list('property_id', flat=True)
             properties_qs = Property.objects.exclude(id__in=existing_metrics)
 
-        if limit:
-            properties_qs = properties_qs[:limit]
+        # Apply ordering for deterministic slicing
+        properties_qs = properties_qs.order_by('id')
+        if limit is not None:
+            properties_qs = properties_qs[offset:offset + limit]
+        elif offset:
+            properties_qs = properties_qs[offset:]
 
         total_count = properties_qs.count()
         self.stdout.write(f'Processing {total_count} properties...')
@@ -61,7 +98,10 @@ class Command(BaseCommand):
 
         while batch_start < total_count:
             batch_end = min(batch_start + batch_size, total_count)
-            batch_properties = list(properties_qs[batch_start:batch_end].select_related('building'))
+            qs_slice = properties_qs[batch_start:batch_end]
+            if not self.skip_building:
+                qs_slice = qs_slice.select_related('building')
+            batch_properties = list(qs_slice)
             
             self.stdout.write(f'Processing batch {batch_start + 1}-{batch_end} of {total_count}...')
             
@@ -70,44 +110,90 @@ class Command(BaseCommand):
             metrics_to_update = []
             
             # Pre-calculate building-level metrics to avoid repeated queries
-            building_metrics = self._calculate_building_metrics(batch_properties)
-            area_metrics = self._calculate_area_metrics(batch_properties)
+            building_metrics = {} if self.skip_building else self._calculate_building_metrics(batch_properties)
+            area_metrics = {} if self.skip_area else self._calculate_area_metrics(batch_properties)
             
+            # Preload existing metrics for this batch to avoid per-row queries
+            prop_ids = [p.id for p in batch_properties]
+            existing_metrics_qs = PropertyMetrics.objects.filter(property_id__in=prop_ids)
+            existing_metrics_map = {m.property_id: m for m in existing_metrics_qs}
+
             for prop in batch_properties:
                 metrics_data = self._calculate_property_metrics(prop, building_metrics, area_metrics)
-                
-                # Check if metrics already exist
-                try:
-                    existing_metric = PropertyMetrics.objects.get(property=prop)
-                    # Update existing
+
+                existing_metric = existing_metrics_map.get(prop.id)
+                if existing_metric:
                     for key, value in metrics_data.items():
                         setattr(existing_metric, key, value)
                     metrics_to_update.append(existing_metric)
-                except PropertyMetrics.DoesNotExist:
-                    # Create new
+                else:
                     metrics_to_create.append(PropertyMetrics(property=prop, **metrics_data))
 
             # Bulk operations
-            with transaction.atomic():
-                if metrics_to_create:
-                    PropertyMetrics.objects.bulk_create(metrics_to_create, batch_size=500)
-                    self.stdout.write(f'Created {len(metrics_to_create)} new metrics')
-                
-                if metrics_to_update:
-                    PropertyMetrics.objects.bulk_update(
-                        metrics_to_update,
-                        ['roi', 'price_per_sqft', 'building_avg_price', 'building_avg_price_by_bedrooms',
-                         'building_avg_roi', 'building_avg_exposure_days', 'building_sale_count',
-                         'building_rent_count', 'building_sale_count_by_bedrooms', 
-                         'building_rent_count_by_bedrooms', 'area_avg_days_on_market', 'avg_rent_by_bedrooms'],
-                        batch_size=500
-                    )
-                    self.stdout.write(f'Updated {len(metrics_to_update)} existing metrics')
+            # Persist creates
+            if metrics_to_create:
+                # create in smaller chunks to reduce DB pressure
+                start = 0
+                total_new = len(metrics_to_create)
+                while start < total_new:
+                    end = min(start + self.update_chunk_size, total_new)
+                    try:
+                        with transaction.atomic():
+                            PropertyMetrics.objects.bulk_create(
+                                metrics_to_create[start:end], batch_size=self.update_chunk_size
+                            )
+                    except OperationalError:
+                        try:
+                            connection.close()
+                        except Exception:
+                            pass
+                        with transaction.atomic():
+                            PropertyMetrics.objects.bulk_create(
+                                metrics_to_create[start:end], batch_size=self.update_chunk_size
+                            )
+                    start = end
+                self.stdout.write(f'Created {total_new} new metrics')
+
+            # Persist updates in chunks
+            if metrics_to_update:
+                fields = [
+                    'roi', 'price_per_sqft', 'building_avg_price', 'building_avg_price_by_bedrooms',
+                    'building_avg_roi', 'building_avg_exposure_days', 'building_sale_count',
+                    'building_rent_count', 'building_sale_count_by_bedrooms',
+                    'building_rent_count_by_bedrooms', 'area_avg_days_on_market', 'avg_rent_by_bedrooms'
+                ]
+                start = 0
+                total_upd = len(metrics_to_update)
+                while start < total_upd:
+                    end = min(start + self.update_chunk_size, total_upd)
+                    try:
+                        with transaction.atomic():
+                            PropertyMetrics.objects.bulk_update(
+                                metrics_to_update[start:end], fields, batch_size=self.update_chunk_size
+                            )
+                    except OperationalError:
+                        # reconnect and retry once
+                        try:
+                            connection.close()
+                        except Exception:
+                            pass
+                        with transaction.atomic():
+                            PropertyMetrics.objects.bulk_update(
+                                metrics_to_update[start:end], fields, batch_size=self.update_chunk_size
+                            )
+                    start = end
+                self.stdout.write(f'Updated {total_upd} existing metrics')
 
             processed += len(batch_properties)
             batch_start = batch_end
             
             self.stdout.write(f'Progress: {processed}/{total_count} ({processed/total_count*100:.1f}%)')
+
+            # Close connection between batches to mitigate remote proxy drops
+            try:
+                connection.close()
+            except Exception:
+                pass
 
         self.stdout.write(self.style.SUCCESS(f'Successfully processed {processed} properties'))
 
@@ -187,11 +273,11 @@ class Command(BaseCommand):
         metrics = {}
         
         # Basic metrics
-        metrics['roi'] = self._calculate_roi_simple(prop)
+        metrics['roi'] = 0 if self.skip_roi else self._calculate_roi_simple(prop)
         metrics['price_per_sqft'] = (float(prop.price) / prop.area_sqft) if prop.price and prop.area_sqft else 0
         
         # Building metrics
-        if prop.building_id and prop.building_id in building_metrics:
+        if not self.skip_building and prop.building_id and prop.building_id in building_metrics:
             bm = building_metrics[prop.building_id]
             metrics['building_avg_price'] = bm['avg_price']
             metrics['building_avg_roi'] = bm['avg_roi']
@@ -226,7 +312,7 @@ class Command(BaseCommand):
             })
         
         # Area metrics
-        if prop.building and prop.building.area in area_metrics:
+        if not self.skip_area and prop.building and prop.building.area in area_metrics:
             metrics['area_avg_days_on_market'] = area_metrics[prop.building.area]['avg_days_on_market']
         else:
             metrics['area_avg_days_on_market'] = 0

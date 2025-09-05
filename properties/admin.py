@@ -21,7 +21,7 @@ class BuildingAdmin(admin.ModelAdmin):
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
     list_display = ['title', 'price', 'price_currency', 'price_duration', 'bedrooms', 
-                   'building', 'agent_name', 'days_on_market', 'roi']
+                   'building', 'agent_name', 'days_on_market', 'roi_metric']
     list_filter = ['price_duration', 'property_type', 'bedrooms', 'verified', 'building__area']
     search_fields = ['title', 'display_address', 'agent_name', 'broker_name']
     readonly_fields = ['property_id', 'roi', 'days_on_market', 'created_at', 'updated_at']
@@ -54,6 +54,17 @@ class PropertyAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+
+    def roi_metric(self, obj):
+        metrics = getattr(obj, 'metrics', None)
+        if metrics and metrics.roi is not None:
+            try:
+                return f"{float(metrics.roi):.2f}%"
+            except Exception:
+                return f"{metrics.roi}%"
+        return '-'
+    roi_metric.short_description = 'ROI'
+    roi_metric.admin_order_field = 'metrics__roi'
 
 
 @admin.register(PropertyAnalytics)
